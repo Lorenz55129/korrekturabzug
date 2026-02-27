@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────
+# Korrekturabzug – Preflight Rules Configuration
+# ─────────────────────────────────────────────
+
+# Maximum upload size in bytes (500 MB)
+max_upload_bytes: 524288000
+
+# Page-size / box rules
+page_size:
+  min_bleed_mm: 3.0          # minimum bleed on every side
+
+# Image resolution rules
+image_resolution:
+  min_dpi: 72                  # fixed minimum DPI threshold for all images
+
+# Cut-contour spot-colour rules
+cut_contour:
+  allowed_names:
+    - "KONTUR"
+    - "CUTCONTOUR"
+    - "KONTURSCHNITT"
+    - "CUTKONTUR"
+    - "CUT_KONTUR"
+    - "CUT-KONTUR"
+    - "CUT KONTUR"
+  expected_cmyk: [0, 100, 0, 0]       # Magenta
+  max_stroke_width_pt: 0.25
+  must_be_unfilled: true
+  must_be_closed: true
+
+# Die / Stanze rules
+die:
+  allowed_names:
+    - "STANZE"
+    - "DIE"
+    - "DIELINE"
+
+# Proof-template field mapping
+# key = internal name, value = AcroForm field name in proof_template.pdf
+field_mapping:
+  customer_name: "customer_name"
+  order_number: "order_number"
+  version_number: "version_number"
+  date: "date"
+  comment: "comment"
+  quantity: "quantity"
+
+# Product profiles (lieferantenspezifisch)
+product_profiles:
+  wahlplakate:
+    default_bleed_mm: 5.0
+    default_safe_margin_mm: 5.0
+    min_size_mm: [100, 100]
+    allowed_spot_names:
+      - "KONTUR"
+      - "CUTCONTOUR"
+      - "KONTURSCHNITT"
+      - "CUTKONTUR"
+      - "CUT_KONTUR"
+      - "CUT-KONTUR"
+      - "CUT KONTUR"
+      - "STANZE"
+      - "DIE"
+      - "DIELINE"
+      - "BOHRUNGEN"
+
+# Drill-hole rules
+drill_holes:
+  separation_names:
+    - "BOHRUNGEN"
+  min_diameter_mm: 4.0
+  min_edge_distance_mm: 20.0
+  expected_cmyk: [100, 0, 0, 0]        # Cyan
+  stroke_width_pt: 0.25                 # Sollwert
+  stroke_width_tolerance_pt: 0.05       # Toleranz ±
+
+# Preview rendering settings for proof pages
+preview:
+  max_width_mm: 160
+  max_height_mm: 220
+  render_dpi: 72                 # max 72 for proof preview (hard-capped in code)
+  dimension_line_color: "#333333"
+  dimension_line_width_pt: 0.5
+  arrow_size_pt: 4
+  bleed_line_dash: [3, 2]        # dash pattern for BleedBox dimension line

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Korrekturabzug</title>
+  <style>
+    /* ── Reset & Base ────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #f5f5f7;
+      min-height: 100vh;
+      color: #1d1d1f;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Page Layout ─────────────────────────────────── */
+    .page {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 56px 20px 80px;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.6px;
+      color: #1d1d1f;
+      line-height: 1.1;
+    }
+
+    .header p {
+      margin-top: 10px;
+      font-size: 17px;
+      color: #6e6e73;
+      font-weight: 400;
+    }
+
+    /* ── Tab Navigation ──────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      background: #e5e5ea;
+      border-radius: 12px;
+      padding: 3px;
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 9px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      color: #6e6e73;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+      text-align: center;
+      letter-spacing: -0.1px;
+    }
+
+    .tab-btn.active {
+      background: #ffffff;
+      color: #1d1d1f;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    .tab-btn:not(.active):hover {
+      color: #1d1d1f;
+    }
+
+    /* ── Tab Panels ──────────────────────────────────── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Card ────────────────────────────────────────── */
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 28px 28px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #6e6e73;
+      margin-bottom: 20px;
+    }
+
+    /* ── Fields ──────────────────────────────────────── */
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #3a3a3c;
+      margin-bottom: 6px;
+    }
+
+    .field .hint {
+      font-size: 12px;
+      color: #aeaeb2;
+      margin-top: 5px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    /* ── Inputs ──────────────────────────────────────── */
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 16px;
+      font-family: inherit;
+      color: #1d1d1f;
+      background: #f5f5f7;
+      border: 1.5px solid transparent;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    textarea:focus {
+      border-color: #0071e3;
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(0,113,227,0.12);
+    }
+
+    input[type="text"]::placeholder,
+    textarea::placeholder { color: #c7c7cc; }
+
+    textarea {
+      resize: vertical;
+      min-height: 88px;
+      line-height: 1.5;
+    }
+
+    /* ── File Input ───────────────────────────────────── */
+    .file-wrapper { position: relative; }
+
+    .file-label-custom {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      background: #f5f5f7;
+      border: 1.5px dashed #c7c7cc;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.18s, background 0.18s;
+      min-height: 48px;
+    }
+
+    .file-label-custom:hover,
+    .file-label-custom.has-file {
+      border-color: #0071e3;
+      background: #f0f6ff;
+    }
+
+    .file-label-custom .file-btn {
+      flex-shrink: 0;
+      background: #0071e3;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      padding: 5px 13px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .file-label-custom .file-name {
+      font-size: 14px;
+      color: #6e6e73;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-label-custom.has-file .file-name { color: #1d1d1f; }
+
+    input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Submit Button ────────────────────────────────── */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 16px;
+      font-size: 17px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #ffffff;
+      background: #0071e3;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      letter-spacing: -0.1px;
+      transition: background 0.18s ease, transform 0.1s ease, box-shadow 0.18s ease;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #0077ed;
+      box-shadow: 0 4px 16px rgba(0,113,227,0.3);
+    }
+
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); box-shadow: none; }
+    .btn-primary:disabled { background: #aeaeb2; cursor: not-allowed; }
+
+    /* ── Result Area ─────────────────────────────────── */
+    .result { margin-top: 20px; }
+
+    .result-card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    /* ── Status Badge ────────────────────────────────── */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 22px;
+    }
+
+    .status-badge::before {
+      content: '';
+      display: block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-PASS { background: #d1f7e0; color: #1a7a3a; }
+    .status-WARN { background: #fff3cc; color: #a05a00; }
+    .status-FAIL { background: #ffe5e5; color: #c0392b; }
+
+    /* ── Result Links ────────────────────────────────── */
+    .result-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #6e6e73;
+      margin-bottom: 10px;
+    }
+
+    .result-links {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+
+    .result-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      background: #f5f5f7;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #0071e3;
+      font-size: 15px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+
+    .result-link:hover { background: #e8e8ed; }
+    .result-link .link-icon { font-size: 18px; line-height: 1; opacity: 0.7; }
+
+    /* ── JSON output ─────────────────────────────────── */
+    .result-json {
+      background: #f5f5f7;
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 11.5px;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+      color: #3c3c43;
+      font-family: 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Mono', monospace;
+    }
+
+    /* ── Processing ──────────────────────────────────── */
+    .processing {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 0;
+      color: #6e6e73;
+      font-size: 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner {
+      width: 22px; height: 22px;
+      border: 2.5px solid #e5e5ea;
+      border-top-color: #0071e3;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* ── Error ───────────────────────────────────────── */
+    .error-card {
+      background: #fff5f5;
+      border: 1.5px solid #ffd5d5;
+      border-radius: 14px;
+      padding: 18px 22px;
+      color: #c0392b;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      font-family: 'SF Mono', 'Menlo', monospace;
+    }
+
+    /* ── Success inline (bleed tool) ─────────────────── */
+    .success-card {
+      background: #f0fbf4;
+      border: 1.5px solid #b7eccc;
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+
+    .success-card .success-meta {
+      font-size: 13px;
+      color: #6e6e73;
+      margin-top: 10px;
+    }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 480px) {
+      .page { padding: 32px 16px 60px; }
+      .header h1 { font-size: 28px; }
+      .card { padding: 22px 20px 18px; }
+      .field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="header">
+      <h1>Korrekturabzug</h1>
+      <p>PDF Preflight &amp; Proof Sheet Generator</p>
+    </header>
+
+    <!-- ── Tab Navigation ──────────────────────────── -->
+    <nav class="tab-bar" role="tablist">
+      <button class="tab-btn active" id="tab-proof"  onclick="switchTab('proof')"  role="tab">Korrekturabzug</button>
+      <button class="tab-btn"        id="tab-bleed"  onclick="switchTab('bleed')"  role="tab">Bleed hinzufügen</button>
+    </nav>
+
+    <!-- ══════════════════════════════════════════════
+         TAB 1: Korrekturabzug
+    ══════════════════════════════════════════════ -->
+    <div class="tab-panel active" id="panel-proof">
+
+      <form id="form-proof" novalidate>
+
+        <!-- Druckdatei -->
+        <div class="card">
+          <div class="card-title">Druckdatei</div>
+          <div class="field">
+            <label>Kundendruckdatei (PDF)</label>
+            <div class="file-wrapper">
+              <div class="file-label-custom" id="proofFileLabel">
+                <span class="file-btn">Datei wählen</span>
+                <span class="file-name" id="proofFileName">Keine Datei ausgewählt</span>
+              </div>
+              <input type="file" id="proof-pdf" name="customer_pdf" accept=".pdf" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auftragsdaten -->
+        <div class="card">
+          <div class="card-title">Auftragsdaten</div>
+          <div class="field">
+            <label for="customer_name">Kundenname</label>
+            <input type="text" id="customer_name" name="customer_name" required
+                   placeholder="z. B. Mustermann GmbH">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="order_number">Auftragsnummer</label>
+              <input type="text" id="order_number" name="order_number" required
+                     placeholder="z. B. 2024-001">
+            </div>
+            <div class="field">
+              <label for="version_number">Versionsnummer</label>
+              <input type="text" id="version_number" name="version_number" required
+                     placeholder="z. B. v1">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="quantity">Menge (Stk.)</label>
+              <input type="number" id="quantity" name="quantity" min="1" value="1" required>
+            </div>
+            <div class="field">
+              <label for="bleed_mm">Beschnitt / Bleed (mm)</label>
+              <input type="number" id="bleed_mm" name="bleed_mm"
+                     min="0" max="30" step="0.5" value="10">
+              <div class="hint">0 = deaktiviert</div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="safe_margin_mm">Sicherheitsabstand (mm)</label>
+            <input type="number" id="safe_margin_mm" name="safe_margin_mm"
+                   min="0" max="30" step="0.5" value="0">
+            <div class="hint">0 = deaktiviert</div>
+          </div>
+        </div>
+
+        <!-- Notizen -->
+        <div class="card">
+          <div class="card-title">Notizen</div>
+          <div class="field">
+            <label for="material_execution">Material &amp; Ausführung</label>
+            <textarea id="material_execution" name="material_execution"
+                      rows="4" maxlength="2000"
+                      placeholder="z. B. 250g Bilderdruckpapier matt, 4/4-farbig, Cellophanierung matt, Rillung …"></textarea>
+          </div>
+          <div class="field">
+            <label for="comment">Interner Kommentar</label>
+            <textarea id="comment" name="comment" rows="2"
+                      placeholder="Interne Notizen für den Grafiker …"></textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="proofSubmitBtn">
+          Korrekturabzug erzeugen
+        </button>
+
+      </form>
+
+      <div class="result" id="result-proof"></div>
+
+    </div><!-- /panel-proof -->
+
+    <!-- ══════════════════════════════════════════════
+         TAB 2: Bleed hinzufügen
+    ══════════════════════════════════════════════ -->
+    <div class="tab-panel" id="panel-bleed">
+
+      <form id="form-bleed" novalidate>
+
+        <div class="card">
+          <div class="card-title">Druckdatei</div>
+          <div class="field">
+            <label>PDF ohne ausreichenden Beschnitt</label>
+            <div class="file-wrapper">
+              <div class="file-label-custom" id="bleedFileLabel">
+                <span class="file-btn">Datei wählen</span>
+                <span class="file-name" id="bleedFileName">Keine Datei ausgewählt</span>
+              </div>
+              <input type="file" id="bleed-pdf" name="pdf" accept=".pdf" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Bleed-Einstellungen</div>
+          <div class="field">
+            <label for="bleed_mm_tool">Bleed-Größe (mm)</label>
+            <input type="number" id="bleed_mm_tool" name="bleed_mm"
+                   min="0.5" max="30" step="0.5" value="3">
+            <div class="hint">
+              Wie viel Beschnitt soll auf jeder Seite ergänzt werden?
+              Der Randstreifen des Motivs wird in den Bleed-Bereich kopiert.
+            </div>
+          </div>
+          <div class="field">
+            <label for="bleed_mode">Modus</label>
+            <select id="bleed_mode" name="mode">
+              <option value="content-extend" selected>Inhalt erweitern (Randstreifen kopieren)</option>
+              <option value="metadata-only">Nur Boxen anpassen (kein neuer Inhalt)</option>
+            </select>
+            <div class="hint">
+              „Inhalt erweitern" füllt den Bleed-Bereich mit dem Randstreifen des Motivs —
+              rein vektorbasiert, ohne Rasterisierung. „Nur Boxen" setzt TrimBox/BleedBox,
+              empfohlen wenn die Datei schon Bleed-Inhalt hat.
+            </div>
+          </div>
+          <div class="field">
+            <label for="bleed_pdfx">PDF/X-Prüfung</label>
+            <select id="bleed_pdfx" name="pdfx">
+              <option value="keep" selected>Beibehalten (keine Prüfung)</option>
+              <option value="x1a">PDF/X-1a prüfen (Abbruch bei Transparenz/RGB)</option>
+              <option value="x4">PDF/X-4 prüfen (Abbruch bei Verschlüsselung)</option>
+            </select>
+            <div class="hint">
+              Bei X-1a/X-4: nur Validierung, keine Konvertierung.
+              Das Tool bricht mit einer Fehlermeldung ab wenn die Datei nicht konform ist.
+            </div>
+          </div>
+          <div class="field field-checkbox">
+            <label class="checkbox-label">
+              <input type="checkbox" id="bleed_mirror" name="mirror" value="true">
+              <span>Randstreifen spiegeln statt verschieben</span>
+            </label>
+            <div class="hint">
+              Nur für „Inhalt erweitern". Spiegelt den Rand um die Trim-Kante
+              statt ihn direkt in den Bleed zu kopieren.
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="bleedSubmitBtn">
+          Bleed hinzufügen
+        </button>
+
+      </form>
+
+      <div class="result" id="result-bleed"></div>
+
+    </div><!-- /panel-bleed -->
+
+  </div><!-- /page -->
+
+  <script>
+    // ── Tab switching ─────────────────────────────────
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-'   + name).classList.add('active');
+      document.getElementById('panel-' + name).classList.add('active');
+    }
+
+    // ── File input display helpers ────────────────────
+    function bindFileInput(inputId, labelId, nameId) {
+      document.getElementById(inputId).addEventListener('change', function () {
+        const f = this.files[0];
+        const label = document.getElementById(labelId);
+        const name  = document.getElementById(nameId);
+        if (f) {
+          name.textContent = f.name;
+          label.classList.add('has-file');
+        } else {
+          name.textContent = 'Keine Datei ausgewählt';
+          label.classList.remove('has-file');
+        }
+      });
+    }
+
+    bindFileInput('proof-pdf', 'proofFileLabel', 'proofFileName');
+    bindFileInput('bleed-pdf', 'bleedFileLabel', 'bleedFileName');
+
+    // ── Proof form ────────────────────────────────────
+    document.getElementById('form-proof').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('proofSubmitBtn');
+      const out = document.getElementById('result-proof');
+
+      btn.disabled = true;
+      btn.textContent = 'Wird verarbeitet …';
+      out.innerHTML = processingHtml('Preflight läuft, bitte warten …');
+
+      try {
+        const r = await fetch('/api/proof', { method: 'POST', body: new FormData(e.target) });
+        const j = await r.json();
+        if (!r.ok) {
+          out.innerHTML = errorHtml(r.status, j.detail ?? j);
+          return;
+        }
+        const status = j.preflight.overall_status;
+        const files = [
+          { url: j.proof_pdf_url,     name: j.proof_pdf_filename,     icon: '📄', label: 'Proof PDF'         },
+          { url: j.tech_svg_url,       name: j.tech_svg_filename,       icon: '📐', label: 'Technische SVG'    },
+          { url: j.jobticket_json_url, name: j.jobticket_json_filename, icon: '🗂', label: 'JobTicket JSON'    },
+          { url: j.detail_json_url,    name: j.detail_json_filename,    icon: '📊', label: 'Preflight Details' },
+        ];
+        let linksHtml = files
+          .filter(f => f.url)
+          .map(f => `<a class="result-link" href="${esc(f.url)}" download="${esc(f.name||'')}">
+                       <span class="link-icon">${f.icon}</span>${esc(f.label)}
+                     </a>`)
+          .join('');
+        out.innerHTML = `
+          <div class="result-card">
+            <span class="status-badge status-${esc(status)}">Gesamtstatus: ${esc(status)}</span>
+            <div class="result-section-label">Dateien</div>
+            <div class="result-links">${linksHtml}</div>
+            <div class="result-section-label">Preflight-Daten</div>
+            <div class="result-json">${esc(JSON.stringify(j.preflight, null, 2))}</div>
+          </div>`;
+      } catch (err) {
+        out.innerHTML = errorHtml('Netzwerkfehler', err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Korrekturabzug erzeugen';
+      }
+    });
+
+    // ── Bleed form ────────────────────────────────────
+    document.getElementById('form-bleed').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('bleedSubmitBtn');
+      const out = document.getElementById('result-bleed');
+
+      btn.disabled = true;
+      btn.textContent = 'Wird verarbeitet …';
+      out.innerHTML = processingHtml('Bleed wird ergänzt …');
+
+      try {
+        const r = await fetch('/api/add-bleed', { method: 'POST', body: new FormData(e.target) });
+        const j = await r.json();
+        if (!r.ok) {
+          out.innerHTML = errorHtml(r.status, j.detail ?? j);
+          return;
+        }
+        const warnings = j.warnings || [];
+        const warningsHtml = warnings.length > 0
+          ? `<div class="result-section-label" style="margin-top:12px">Hinweise</div>
+             <div class="bleed-warnings">
+               ${warnings.map(w => `<div class="bleed-warning-item">⚠️ ${esc(w)}</div>`).join('')}
+             </div>`
+          : '';
+        out.innerHTML = `
+          <div class="result-card success-card">
+            <div class="result-section-label">Ergebnis</div>
+            <div class="result-links">
+              <a class="result-link" href="${esc(j.url)}" download="${esc(j.filename)}">
+                <span class="link-icon">📄</span>${esc(j.filename)}
+              </a>
+            </div>
+            <div class="success-meta">
+              ${esc(String(j.pages))} Seite(n) &nbsp;·&nbsp;
+              ${esc(String(j.bleed_mm))} mm &nbsp;·&nbsp;
+              Modus: ${esc(j.mode || 'content-extend')}
+            </div>
+            ${warningsHtml}
+          </div>`;
+      } catch (err) {
+        out.innerHTML = errorHtml('Netzwerkfehler', err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Bleed hinzufügen';
+      }
+    });
+
+    // ── Helpers ───────────────────────────────────────
+    function processingHtml(msg) {
+      return `<div class="result-card">
+        <div class="processing">
+          <div class="spinner"></div>${esc(msg)}
+        </div>
+      </div>`;
+    }
+
+    function errorHtml(code, detail) {
+      return `<div class="error-card"><b>Fehler ${esc(String(code))}</b>\n${esc(typeof detail === 'string' ? detail : JSON.stringify(detail, null, 2))}</div>`;
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

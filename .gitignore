@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Runtime-Daten (nicht in Git)
+output/
+uploads/
+
+# Claude-interne Konfiguration
+.claude/
+
+# InDesign / Illustrator Quelldateien (keine App-Assets)
+*.ait
+*.indt
+
+# Logs
+*.log
