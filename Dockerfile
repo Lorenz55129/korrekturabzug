@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir .
 
 COPY config.yaml .
 COPY app/ app/
+COPY static/ static/
 
 RUN mkdir -p uploads output templates
 
