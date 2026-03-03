@@ -425,6 +425,10 @@ def create_proof(
         logger.exception("Preflight failed for job %s", job_id)
         raise HTTPException(status_code=422, detail=f"Preflight analysis failed: {exc}") from exc
 
+    # Originalen Dateinamen beibehalten
+    if customer_pdf.filename:
+        preflight_result.filename = customer_pdf.filename
+
     # ── Build output filenames ───────────────────────────
     proof_filename, tech_filename, ticket_filename = _build_output_filenames(
         order_number, customer_name, version_number,
