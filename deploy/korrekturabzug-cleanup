@@ -1,0 +1,5 @@
+#!/bin/bash
+# Cron-Script: Löscht Dateien älter als 3 Tage
+# Installation: cp korrekturabzug-cleanup /etc/cron.daily/ && chmod +x /etc/cron.daily/korrekturabzug-cleanup
+find /opt/korrekturabzug/output -type f -mtime +3 -delete
+find /opt/korrekturabzug/uploads -type f -mtime +3 -delete
