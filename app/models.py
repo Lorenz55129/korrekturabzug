@@ -67,6 +67,7 @@ class FontInfo(BaseModel):
     name: str
     page: int
     is_embedded: bool = True
+    is_subset: bool = False
     is_type3: bool = False
     status: RuleStatus = RuleStatus.PASS
     message: str = ""
@@ -77,6 +78,7 @@ class FontCheckResult(BaseModel):
     fonts: list[FontInfo] = Field(default_factory=list)
     total_fonts: int = 0
     not_embedded_count: int = 0
+    subset_count: int = 0
     type3_count: int = 0
     status: RuleStatus = RuleStatus.PASS
     messages: list[str] = Field(default_factory=list)
