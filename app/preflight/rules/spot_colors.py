@@ -155,8 +155,12 @@ def _try_extract_cmyk(cs_array: pikepdf.Array) -> list[float] | None:
         # A common shortcut: if it's a /FunctionType 2 (exponential), the C1 array is the colour.
         tint_fn = cs_array[3]
         if hasattr(tint_fn, "resolve"):
-            tint_fn = tint_fn.resolve()
-        if isinstance(tint_fn, pikepdf.Dictionary):
+            try:
+                tint_fn = tint_fn.resolve()
+            except Exception:
+                pass
+        # Use hasattr instead of isinstance – pikepdf may return Object not Dictionary
+        if hasattr(tint_fn, "get"):
             c1 = tint_fn.get("/C1")
             if c1 is not None:
                 vals = [float(v) for v in c1]
@@ -232,8 +236,10 @@ def _check_path_geometry(
             if not color:
                 continue
             r, g, b = color[0], color[1], color[2]
-            # Magenta heuristic: CMYK(0,100,0,0) → RGB(1,0,1)
-            if not (r > 0.8 and g < 0.2 and b > 0.8):
+            # Magenta heuristic: CMYK(0,100,0,0) → RGB ideally (1,0,1), but
+            # PyMuPDF may render it as (0.93,0,0.55) depending on ICC profile.
+            # Key signature: high R, near-zero G (ignore B threshold).
+            if not (r > 0.7 and g < 0.15):
                 continue
 
             width = drawing.get("width") or 0.0

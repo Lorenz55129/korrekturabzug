@@ -669,9 +669,10 @@ def _build_summary_pdf(result: PreflightResult, request: ProofRequest) -> bytes:
         else:
             cc_detail = "Nicht gefunden"
         rows.append(["Konturschnitt", cc_status.value, cc_detail])
-        die_status = result.die.status if result.die else RuleStatus.FAIL
-        rows.append(["Stanze / Die", die_status.value,
-                     "Gefunden" if (result.die and result.die.found) else "Nicht gefunden"])
+        if result.die is not None:
+            die_status = result.die.status
+            rows.append(["Stanze / Die", die_status.value,
+                         "Gefunden" if result.die.found else "Nicht gefunden"])
     else:
         rows.append(["Konturschnitt / Stanze", "\u2013", "deaktiviert"])
 

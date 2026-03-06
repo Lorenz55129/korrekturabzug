@@ -108,8 +108,8 @@ def run_preflight(
         # 9) Cut contour – only if enabled
         if has_contour_cut:
             result.cut_contour = check_cut_contour(pdf_path, doc, cfg)
-            # 10) Die / Stanze
-            #   For wahlplakate: Stanze is optional → cap at WARN (never FAIL)
+            # 10) Die / Stanze – only for wahlplakate profile
+            #   Standard cut-contour PDFs don't have a separate Stanze spot.
             if product_profile == "wahlplakate":
                 result.die = check_die(pdf_path, doc, cfg)
                 if result.die and result.die.status == RuleStatus.FAIL:
@@ -119,7 +119,7 @@ def run_preflight(
                         for m in result.die.messages
                     ]
             else:
-                result.die = check_die(pdf_path, doc, cfg)
+                result.die = None  # not checked for standard profiles
         else:
             result.cut_contour = None
             result.die = None
