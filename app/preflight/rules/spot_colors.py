@@ -246,6 +246,14 @@ def _check_path_geometry(
             fill = drawing.get("fill")
             close_path = drawing.get("closePath", False)
 
+            # PyMuPDF reports closePath=False for "re" (rectangle) operators even
+            # though they are inherently closed. Treat any path whose items consist
+            # only of "re" entries as closed.
+            if not close_path:
+                items = drawing.get("items", [])
+                if items and all(item[0] == "re" for item in items):
+                    close_path = True
+
             all_widths.append(width)
             if fill is not None:
                 any_filled = True
