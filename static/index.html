@@ -177,6 +177,55 @@
       line-height: 1.5;
     }
 
+    /* ── Checkbox ─────────────────────────────────────── */
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 400;
+      color: #1d1d1f;
+      user-select: none;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      border-radius: 6px;
+      border: 1.5px solid #c7c7cc;
+      background: #f5f5f7;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      position: relative;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked {
+      background: #0071e3;
+      border-color: #0071e3;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 7px;
+      height: 11px;
+      border: 2px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .checkbox-label input[type="checkbox"]:focus {
+      box-shadow: 0 0 0 4px rgba(0,113,227,0.15);
+      outline: none;
+    }
+
     /* ── File Input ───────────────────────────────────── */
     .file-wrapper { position: relative; }
 
@@ -474,6 +523,25 @@
             <input type="number" id="safe_margin_mm" name="safe_margin_mm"
                    min="0" max="30" step="0.5" value="0">
             <div class="hint">0 = deaktiviert</div>
+          </div>
+        </div>
+
+        <!-- Prüfoptionen -->
+        <div class="card">
+          <div class="card-title">Prüfoptionen</div>
+          <div class="field">
+            <label class="checkbox-label">
+              <input type="checkbox" id="has_contour_cut" name="has_contour_cut" value="true">
+              <span>Konturschnitt prüfen</span>
+            </label>
+            <div class="hint" style="margin-left:30px">Spotfarbe „Cutkontur" — Strichstärke, Überdrucken, Pfad-Geometrie</div>
+          </div>
+          <div class="field">
+            <label class="checkbox-label">
+              <input type="checkbox" id="has_drill_holes" name="has_drill_holes" value="true">
+              <span>Bohrungen prüfen</span>
+            </label>
+            <div class="hint" style="margin-left:30px">Spotfarbe „Drill" — Durchmesser, Randabstand, Kreisförmigkeit</div>
           </div>
         </div>
 
