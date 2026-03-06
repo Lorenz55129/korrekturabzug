@@ -130,7 +130,8 @@
     /* ── Inputs ──────────────────────────────────────── */
     input[type="text"],
     input[type="number"],
-    textarea {
+    textarea,
+    select {
       width: 100%;
       padding: 11px 14px;
       font-size: 16px;
@@ -143,6 +144,20 @@
       transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
       -webkit-appearance: none;
       appearance: none;
+    }
+
+    select {
+      padding-right: 36px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236e6e73' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 13px center;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: #0071e3;
+      background-color: #ffffff;
+      box-shadow: 0 0 0 4px rgba(0,113,227,0.12);
     }
 
     input[type="text"]:focus,
@@ -413,6 +428,13 @@
               <input type="file" id="proof-pdf" name="customer_pdf" accept=".pdf" required>
             </div>
           </div>
+          <div class="field">
+            <label for="scale">Maßstab</label>
+            <select id="scale" name="scale">
+              <option value="1">1:1 — Originalgröße</option>
+              <option value="10">1:10 — Großformat (min. 720 DPI)</option>
+            </select>
+          </div>
         </div>
 
         <!-- Auftragsdaten -->
@@ -452,14 +474,6 @@
             <input type="number" id="safe_margin_mm" name="safe_margin_mm"
                    min="0" max="30" step="0.5" value="0">
             <div class="hint">0 = deaktiviert</div>
-          </div>
-          <div class="field">
-            <label for="scale">Maßstab</label>
-            <select id="scale" name="scale">
-              <option value="1">1:1 (Originalgröße)</option>
-              <option value="10">1:10 (Großformat, min. 720 DPI)</option>
-            </select>
-            <div class="hint">Bei 1:10 wird Mindest-DPI auf 720 gesetzt, Bleed/Sicherheitsabstand werden entsprechend skaliert</div>
           </div>
         </div>
 
