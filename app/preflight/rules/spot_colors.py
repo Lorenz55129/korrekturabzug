@@ -277,17 +277,19 @@ def _check_path_geometry(
         page = doc[page_num - 1]  # pages are 1-indexed
         for drawing in page.get_drawings():
             color = drawing.get("color")
-            if not color:
-                continue
-            r, g, b = color[0], color[1], color[2]
+            fill = drawing.get("fill")
+
             # Magenta heuristic: CMYK(0,100,0,0) → RGB ideally (1,0,1), but
             # PyMuPDF may render it as (0.93,0,0.55) depending on ICC profile.
             # Key signature: high R, near-zero G (ignore B threshold).
-            if not (r > 0.7 and g < 0.15):
+            # Check both stroke color AND fill color (some tools export CC as filled shapes).
+            def _is_mag(c: "tuple | None") -> bool:
+                return bool(c and len(c) >= 3 and c[0] > 0.7 and c[1] < 0.15)
+
+            if not (_is_mag(color) or _is_mag(fill)):
                 continue
 
             width = drawing.get("width") or 0.0
-            fill = drawing.get("fill")
             close_path = _is_drawing_closed(drawing)
 
             all_widths.append(width)
