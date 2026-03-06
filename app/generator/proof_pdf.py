@@ -1187,8 +1187,8 @@ def _build_detail_pdf(
                     rightIndent=4,
                 )
                 story.append(Paragraph(
-                    "<b>!</b> &nbsp; Rote Rahmen im Vorschaubild kennzeichnen fehlerhafte "
-                    "Konturschnitt-Pfade. Das Ausrufezeichen (<b>!</b>) markiert die "
+                    "Rote Rahmen im Vorschaubild kennzeichnen fehlerhafte "
+                    "Konturschnitt-Pfade. Das rote <b>&#x2715;</b> markiert die "
                     "genaue Position des Fehlers.",
                     legend_style,
                 ))
@@ -1204,48 +1204,51 @@ def _build_detail_pdf(
                 preview_w_pt = rect.width * scale
                 preview_h_pt = rect.height * scale
 
-                # Add temporary red rect + exclamation mark annotations
+                # Draw red border + red X with white outline for each problem rect.
+                # Shape drawings modify the in-memory page only; _cc_fitz_doc is
+                # never saved, so changes are discarded when the doc is closed.
                 annots_added = []
                 border_w = max(1.5, rect.width / 300)
+                shape = page_fitz.new_shape()
+
                 for pr in cc.problem_rects:
                     if pr.get("page") != page_num:
                         continue
                     r = fitz.Rect(pr["x0"], pr["y0"], pr["x1"], pr["y1"])
 
-                    # Red border rectangle
+                    # Red border rectangle (annotation, removed after render)
                     rect_annot = page_fitz.add_rect_annot(r)
                     rect_annot.set_colors(stroke=(1, 0, 0))
                     rect_annot.set_border(width=border_w)
                     rect_annot.update()
                     annots_added.append(rect_annot)
 
-                    # Exclamation mark: font size = 60 % of rect height, min 6 pt
-                    h = r.height
-                    font_size = max(6.0, h * 0.6)
-                    # Center a small text rect inside the problem rect
-                    cx = (r.x0 + r.x1) / 2
-                    cy = (r.y0 + r.y1) / 2
-                    tw = font_size * 0.8
-                    th = font_size * 1.2
-                    text_rect = fitz.Rect(cx - tw / 2, cy - th / 2, cx + tw / 2, cy + th / 2)
-                    try:
-                        ft_annot = page_fitz.add_freetext_annot(
-                            text_rect,
-                            "!",
-                            fontsize=font_size,
-                            fontname="Helvetica-Bold",
-                            text_color=(1, 0, 0),
-                            fill_color=None,
-                            align=fitz.TEXT_ALIGN_CENTER,
-                        )
-                        ft_annot.update()
-                        annots_added.append(ft_annot)
-                    except Exception:
-                        pass  # freetext not supported in this build → skip
+                    # Red X with white outline drawn via Shape
+                    side = min(r.width, r.height)
+                    pad = side * 0.2
+                    line_w = max(1.0, side * 0.12)
+                    p1 = fitz.Point(r.x0 + pad, r.y0 + pad)
+                    p2 = fitz.Point(r.x1 - pad, r.y1 - pad)
+                    p3 = fitz.Point(r.x1 - pad, r.y0 + pad)
+                    p4 = fitz.Point(r.x0 + pad, r.y1 - pad)
+
+                    # White outline (2× thicker)
+                    for a, b in ((p1, p2), (p3, p4)):
+                        shape.draw_line(a, b)
+                        shape.finish(color=(1, 1, 1), width=line_w * 2.5,
+                                     stroke_opacity=1)
+
+                    # Red X on top
+                    for a, b in ((p1, p2), (p3, p4)):
+                        shape.draw_line(a, b)
+                        shape.finish(color=(1, 0, 0), width=line_w,
+                                     stroke_opacity=1)
+
+                shape.commit()
 
                 jpeg_bytes = _render_page_preview(_cc_fitz_doc, page_num - 1)
 
-                # Remove all temporary annotations
+                # Remove rect annotations (Shape drawings stay in memory only)
                 for annot in annots_added:
                     page_fitz.delete_annot(annot)
 
