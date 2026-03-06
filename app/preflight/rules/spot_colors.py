@@ -200,6 +200,101 @@ def _find_spot_on_pages_fitz(doc: fitz.Document, spot_name_upper: str) -> list[i
     return pages
 
 
+def _is_true_overprint(val: Any) -> bool:
+    """Check whether a pikepdf value represents boolean True."""
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return val
+    return str(val).lower() == "true"
+
+
+def _check_path_geometry(
+    doc: fitz.Document,
+    pages: list[int],
+    cfg: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate cut contour path geometry using PyMuPDF get_drawings().
+
+    Identifies Magenta paths via RGB heuristic (CMYK 0,100,0,0 → RGB 1,0,1).
+    Returns dict with: stroke_width_pt, is_unfilled, is_closed, stroke_ok, paths_found.
+    """
+    max_stroke_pt = cfg.get("cut_contour", {}).get("max_stroke_width_pt", 0.25)
+
+    all_widths: list[float] = []
+    any_filled = False
+    any_unclosed = False
+
+    for page_num in pages:
+        page = doc[page_num - 1]  # pages are 1-indexed
+        for drawing in page.get_drawings():
+            color = drawing.get("color")
+            if not color:
+                continue
+            r, g, b = color[0], color[1], color[2]
+            # Magenta heuristic: CMYK(0,100,0,0) → RGB(1,0,1)
+            if not (r > 0.8 and g < 0.2 and b > 0.8):
+                continue
+
+            width = drawing.get("width") or 0.0
+            fill = drawing.get("fill")
+            close_path = drawing.get("closePath", False)
+
+            all_widths.append(width)
+            if fill is not None:
+                any_filled = True
+            if not close_path:
+                any_unclosed = True
+
+    if not all_widths:
+        return {
+            "stroke_width_pt": None,
+            "is_unfilled": None,
+            "is_closed": None,
+            "stroke_ok": None,
+            "paths_found": False,
+        }
+
+    max_width = max(all_widths)
+    return {
+        "stroke_width_pt": round(max_width, 3),
+        "is_unfilled": not any_filled,
+        "is_closed": not any_unclosed,
+        "stroke_ok": max_width <= max_stroke_pt,
+        "paths_found": True,
+    }
+
+
+def _check_overprint_cutcontour(pdf_path: str, pages: list[int]) -> bool | None:
+    """Check if overprint (/OP or /op) is set in ExtGState on cut-contour pages.
+
+    Returns True if overprint found, False if absent, None if check failed.
+    """
+    try:
+        with pikepdf.open(pdf_path) as pdf:
+            for page_num in pages:
+                page = pdf.pages[page_num - 1]
+                resources = page.get("/Resources")
+                if resources is None:
+                    continue
+                ext_gstate = resources.get("/ExtGState")
+                if ext_gstate is None or not hasattr(ext_gstate, "items"):
+                    continue
+                for _name, gs_ref in ext_gstate.items():
+                    try:
+                        gs = gs_ref.resolve() if hasattr(gs_ref, "resolve") else gs_ref
+                        op_stroke = gs.get("/OP")
+                        op_fill = gs.get("/op")
+                        if _is_true_overprint(op_stroke) or _is_true_overprint(op_fill):
+                            return True
+                    except Exception:
+                        continue
+        return False
+    except Exception as exc:
+        logger.debug("Overprint check failed for cut contour: %s", exc)
+        return None
+
+
 def check_cut_contour(
     pdf_path: str,
     doc: fitz.Document,
@@ -208,6 +303,7 @@ def check_cut_contour(
     cc_cfg = cfg.get("cut_contour", {})
     allowed = cc_cfg.get("allowed_names", [])
     expected_cmyk = cc_cfg.get("expected_cmyk", [0, 100, 0, 0])
+    max_stroke_pt = cc_cfg.get("max_stroke_width_pt", 0.25)
 
     spots = _extract_spot_colors_pikepdf(pdf_path)
     messages: list[str] = []
@@ -259,10 +355,56 @@ def check_cut_contour(
     if not pages:
         pages = list(range(1, len(doc) + 1))  # fallback: assume all
 
+    # Path geometry validation
+    geom = _check_path_geometry(doc, pages, cfg)
+    stroke_width_pt = geom["stroke_width_pt"]
+    is_unfilled = geom["is_unfilled"]
+    is_closed = geom["is_closed"]
+
+    if geom["paths_found"]:
+        if geom["stroke_ok"] is False:
+            messages.append(
+                f"Strichstärke {stroke_width_pt:.3f} pt > {max_stroke_pt} pt "
+                f"(erwartet ≤ {max_stroke_pt} pt)"
+            )
+            status = RuleStatus.WARN
+        else:
+            messages.append(f"Strichstärke {stroke_width_pt:.3f} pt – OK")
+
+        if is_unfilled is False:
+            messages.append("Cutcontour-Pfad hat Füllung (muss ungefüllt sein)")
+            status = RuleStatus.WARN
+        else:
+            messages.append("Pfad ungefüllt – OK")
+
+        if is_closed is False:
+            messages.append("Cutcontour-Pfad nicht geschlossen")
+            status = RuleStatus.WARN
+        else:
+            messages.append("Pfad geschlossen – OK")
+    else:
+        messages.append(
+            "Pfad-Geometrie konnte nicht geprüft werden (keine Magenta-Pfade erkannt)"
+        )
+
+    # Overprint check
+    is_overprint = _check_overprint_cutcontour(pdf_path, pages)
+    if is_overprint is None:
+        messages.append("Überdrucken konnte nicht geprüft werden")
+    elif not is_overprint:
+        messages.append("Überdrucken (Overprint) nicht gesetzt")
+        status = RuleStatus.WARN
+    else:
+        messages.append("Überdrucken gesetzt – OK")
+
     return CutContourResult(
         found=True,
         spot_color=spot_info,
         pages=pages,
+        stroke_width_pt=stroke_width_pt,
+        is_unfilled=is_unfilled,
+        is_closed=is_closed,
+        is_overprint=is_overprint,
         status=status,
         messages=messages,
     )

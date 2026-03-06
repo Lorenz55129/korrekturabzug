@@ -18,7 +18,7 @@ from app.preflight.rules.overprint_check import check_overprint
 from app.preflight.rules.page_size import check_page_sizes
 from app.preflight.rules.rgb_check import check_rgb
 from app.preflight.rules.safe_area import check_safe_area
-from app.preflight.rules.spot_colors import check_cut_contour, check_die
+from app.preflight.rules.spot_colors import _name_matches, check_cut_contour, check_die
 from app.preflight.rules.spotcolor_list import check_spot_colors_list
 
 logger = logging.getLogger(__name__)
@@ -123,6 +123,13 @@ def run_preflight(
         else:
             result.cut_contour = None
             result.die = None
+            # Hint: check if a cut-contour spot exists even though check is off
+            if result.spot_color_list:
+                cc_allowed = cfg.get("cut_contour", {}).get("allowed_names", [])
+                for entry in result.spot_color_list.spot_colors:
+                    if _name_matches(entry.name, cc_allowed):
+                        result.cutcontour_hint = entry.name
+                        break
 
         # 11) Drill holes – only if enabled
         if has_drill_holes:

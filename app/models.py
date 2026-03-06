@@ -129,6 +129,7 @@ class CutContourResult(BaseModel):
     stroke_width_pt: Optional[float] = None
     is_unfilled: Optional[bool] = None
     is_closed: Optional[bool] = None
+    is_overprint: Optional[bool] = None
     status: RuleStatus = RuleStatus.FAIL
     messages: list[str] = Field(default_factory=list)
 
@@ -225,6 +226,7 @@ class PreflightResult(BaseModel):
     rgb_check: Optional[RGBCheckResult] = None
     contour_check_enabled: bool = True
     cut_contour: Optional[CutContourResult] = None
+    cutcontour_hint: Optional[str] = None  # spot name found when check is disabled
     die: Optional[DieResult] = None
     # Wahlplakate / profile fields
     product_profile: Optional[str] = None

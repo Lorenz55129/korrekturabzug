@@ -24,6 +24,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     Flowable,
+    Image as _RLImage,
     KeepTogether,
     PageBreak,
     Paragraph,
@@ -665,7 +666,12 @@ def _build_summary_pdf(result: PreflightResult, request: ProofRequest) -> bytes:
         rows.append(["Stanze / Die", die_status.value,
                      "Gefunden" if (result.die and result.die.found) else "Nicht gefunden"])
     else:
-        rows.append(["Konturschnitt / Stanze", "\u2013", "deaktiviert"])
+        cc_hint = result.cutcontour_hint
+        cc_hint_text = (
+            f"Nicht gepr\u00fcft \u2013 \u201e{cc_hint}\u201c erkannt"
+            if cc_hint else "deaktiviert"
+        )
+        rows.append(["Konturschnitt / Stanze", "\u2013", cc_hint_text])
 
     # Drill holes row
     if result.drill_holes_check_enabled:
@@ -918,6 +924,7 @@ def _build_detail_pdf(
     result: PreflightResult,
     request: ProofRequest,
     has_overflow: bool,
+    customer_pdf_path: str = "",
 ) -> Optional[bytes]:
     """Build 0-2 pages showing only FAIL/WARN entries.
 
@@ -982,6 +989,14 @@ def _build_detail_pdf(
             and not has_safe_area_issues and not has_overprint_issues
             and not has_drill_issues):
         return None
+
+    # Open customer PDF for cut contour page previews (closed at the end)
+    _cc_fitz_doc: Optional[fitz.Document] = None
+    if customer_pdf_path and has_contour_issues:
+        try:
+            _cc_fitz_doc = fitz.open(customer_pdf_path)
+        except Exception as exc:
+            logger.debug("Could not open customer PDF for CC preview: %s", exc)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -1104,8 +1119,80 @@ def _build_detail_pdf(
     if has_contour_issues and result.cut_contour:
         cc = result.cut_contour
         story.append(Paragraph(f"Konturschnitt: {_status_html(cc.status)}", h2))
+
+        # Properties table
+        _MAX_STROKE_PT = 0.25
+        cc_rows: list[list[str]] = [["Eigenschaft", "Wert", "Status"]]
+        if cc.spot_color:
+            cc_rows.append(["Spot Color", cc.spot_color.name, "\u2713"])
+            if cc.spot_color.cmyk is not None:
+                cmyk_str = "/".join(f"{int(v)}" for v in cc.spot_color.cmyk)
+                mag = cc.spot_color.is_expected_magenta
+                cc_rows.append([
+                    "CMYK (Magenta)", cmyk_str,
+                    "\u2713" if mag else ("\u003f" if mag is None else "\u2717"),
+                ])
+        if cc.stroke_width_pt is not None:
+            ok = cc.stroke_width_pt <= _MAX_STROKE_PT
+            cc_rows.append([
+                "Strichst\u00e4rke",
+                f"{cc.stroke_width_pt:.3f} pt",
+                "\u2713" if ok else "\u2717",
+            ])
+        if cc.is_overprint is not None:
+            cc_rows.append([
+                "\u00dcberdrucken",
+                "Ja" if cc.is_overprint else "Nein",
+                "\u2713" if cc.is_overprint else "\u2717",
+            ])
+        if cc.is_unfilled is not None:
+            cc_rows.append([
+                "Pfad ungef\u00fcllt",
+                "Ja" if cc.is_unfilled else "Nein",
+                "\u2713" if cc.is_unfilled else "\u2717",
+            ])
+        if cc.is_closed is not None:
+            cc_rows.append([
+                "Pfad geschlossen",
+                "Ja" if cc.is_closed else "Nein",
+                "\u2713" if cc.is_closed else "\u2717",
+            ])
+
+        if len(cc_rows) > 1:
+            cc_tbl = Table(cc_rows, colWidths=[45 * mm, 50 * mm, 12 * mm])
+            cc_tbl.setStyle(ts)
+            story.append(cc_tbl)
+            story.append(Spacer(1, 2 * mm))
+
         for m in cc.messages:
             story.append(Paragraph(f"\u2022 {m}", body))
+
+        # Page previews
+        if cc.pages and _cc_fitz_doc is not None:
+            story.append(Spacer(1, 3 * mm))
+            for page_num in cc.pages[:3]:
+                if page_num < 1 or page_num > len(_cc_fitz_doc):
+                    continue
+                page_fitz = _cc_fitz_doc[page_num - 1]
+                rect = page_fitz.rect
+                max_w_pt = 120.0 * MM_TO_PT
+                scale = min(1.0, max_w_pt / max(rect.width, 1.0))
+                preview_w_pt = rect.width * scale
+                preview_h_pt = rect.height * scale
+                jpeg_bytes = _render_page_preview(_cc_fitz_doc, page_num - 1)
+                rl_img = _RLImage(
+                    io.BytesIO(jpeg_bytes),
+                    width=preview_w_pt,
+                    height=preview_h_pt,
+                )
+                story.append(Paragraph(f"Seite {page_num}", note))
+                story.append(rl_img)
+                story.append(Spacer(1, 3 * mm))
+            if len(cc.pages) > 3:
+                story.append(Paragraph(
+                    f"... und {len(cc.pages) - 3} weitere Seiten", note,
+                ))
+
         story.append(Spacer(1, 3 * mm))
 
     if has_die_issues and result.die:
@@ -1189,6 +1276,8 @@ def _build_detail_pdf(
         story.append(Spacer(1, 3 * mm))
 
     doc.build(story)
+    if _cc_fitz_doc is not None:
+        _cc_fitz_doc.close()
     return buf.getvalue()
 
 
@@ -1301,7 +1390,7 @@ def generate_proof_pdf(
     # Step 4: check for overflow and build detail pages
     grouped = _group_fail_images(result)
     has_overflow = len(grouped) > _MAX_DETAIL_ROWS
-    detail_bytes = _build_detail_pdf(result, request, has_overflow)
+    detail_bytes = _build_detail_pdf(result, request, has_overflow, customer_pdf_str)
 
     # Step 5: merge all – template + summary + previews + details
     doc_filled = fitz.open(tmp_filled)
