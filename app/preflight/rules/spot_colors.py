@@ -147,7 +147,10 @@ def _try_extract_cmyk(cs_array: pikepdf.Array) -> list[float] | None:
             return None
         alt_cs = cs_array[2]
         if hasattr(alt_cs, "resolve"):
-            alt_cs = alt_cs.resolve()
+            try:
+                alt_cs = alt_cs.resolve()
+            except Exception:
+                pass
         alt_name = str(alt_cs) if not isinstance(alt_cs, pikepdf.Array) else str(alt_cs[0])
         if alt_name != "/DeviceCMYK":
             return None
