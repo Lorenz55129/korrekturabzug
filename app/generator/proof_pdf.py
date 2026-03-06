@@ -1173,6 +1173,27 @@ def _build_detail_pdf(
         # Page previews
         if cc.pages and _cc_fitz_doc is not None:
             story.append(Spacer(1, 3 * mm))
+
+            # Legend – only when there are problem rects to explain
+            if cc.problem_rects:
+                legend_style = ParagraphStyle(
+                    "legend",
+                    parent=note,
+                    backColor=colors.HexColor("#fff3f3"),
+                    borderColor=colors.HexColor("#c62828"),
+                    borderWidth=0.5,
+                    borderPadding=4,
+                    leftIndent=4,
+                    rightIndent=4,
+                )
+                story.append(Paragraph(
+                    "<b>!</b> &nbsp; Rote Rahmen im Vorschaubild kennzeichnen fehlerhafte "
+                    "Konturschnitt-Pfade. Das Ausrufezeichen (<b>!</b>) markiert die "
+                    "genaue Position des Fehlers.",
+                    legend_style,
+                ))
+                story.append(Spacer(1, 3 * mm))
+
             for page_num in cc.pages[:3]:
                 if page_num < 1 or page_num > len(_cc_fitz_doc):
                     continue
@@ -1183,21 +1204,48 @@ def _build_detail_pdf(
                 preview_w_pt = rect.width * scale
                 preview_h_pt = rect.height * scale
 
-                # Add temporary red annotations for problematic paths
+                # Add temporary red rect + exclamation mark annotations
                 annots_added = []
+                border_w = max(1.5, rect.width / 300)
                 for pr in cc.problem_rects:
                     if pr.get("page") != page_num:
                         continue
                     r = fitz.Rect(pr["x0"], pr["y0"], pr["x1"], pr["y1"])
-                    annot = page_fitz.add_rect_annot(r)
-                    annot.set_colors(stroke=(1, 0, 0))
-                    annot.set_border(width=max(1.5, rect.width / 300))
-                    annot.update()
-                    annots_added.append(annot)
+
+                    # Red border rectangle
+                    rect_annot = page_fitz.add_rect_annot(r)
+                    rect_annot.set_colors(stroke=(1, 0, 0))
+                    rect_annot.set_border(width=border_w)
+                    rect_annot.update()
+                    annots_added.append(rect_annot)
+
+                    # Exclamation mark: font size = 60 % of rect height, min 6 pt
+                    h = r.height
+                    font_size = max(6.0, h * 0.6)
+                    # Center a small text rect inside the problem rect
+                    cx = (r.x0 + r.x1) / 2
+                    cy = (r.y0 + r.y1) / 2
+                    tw = font_size * 0.8
+                    th = font_size * 1.2
+                    text_rect = fitz.Rect(cx - tw / 2, cy - th / 2, cx + tw / 2, cy + th / 2)
+                    try:
+                        ft_annot = page_fitz.add_freetext_annot(
+                            text_rect,
+                            "!",
+                            fontsize=font_size,
+                            fontname="Helvetica-Bold",
+                            text_color=(1, 0, 0),
+                            fill_color=None,
+                            align=fitz.TEXT_ALIGN_CENTER,
+                        )
+                        ft_annot.update()
+                        annots_added.append(ft_annot)
+                    except Exception:
+                        pass  # freetext not supported in this build → skip
 
                 jpeg_bytes = _render_page_preview(_cc_fitz_doc, page_num - 1)
 
-                # Remove temporary annotations again
+                # Remove all temporary annotations
                 for annot in annots_added:
                     page_fitz.delete_annot(annot)
 
