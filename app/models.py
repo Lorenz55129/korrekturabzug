@@ -132,6 +132,7 @@ class CutContourResult(BaseModel):
     is_overprint: Optional[bool] = None
     status: RuleStatus = RuleStatus.FAIL
     messages: list[str] = Field(default_factory=list)
+    problem_rects: list[dict] = Field(default_factory=list)  # [{page, x0,y0,x1,y1}]
 
 
 class DieResult(BaseModel):

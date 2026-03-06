@@ -1182,7 +1182,25 @@ def _build_detail_pdf(
                 scale = min(1.0, max_w_pt / max(rect.width, 1.0))
                 preview_w_pt = rect.width * scale
                 preview_h_pt = rect.height * scale
+
+                # Add temporary red annotations for problematic paths
+                annots_added = []
+                for pr in cc.problem_rects:
+                    if pr.get("page") != page_num:
+                        continue
+                    r = fitz.Rect(pr["x0"], pr["y0"], pr["x1"], pr["y1"])
+                    annot = page_fitz.add_rect_annot(r)
+                    annot.set_colors(stroke=(1, 0, 0))
+                    annot.set_border(width=max(1.5, rect.width / 300))
+                    annot.update()
+                    annots_added.append(annot)
+
                 jpeg_bytes = _render_page_preview(_cc_fitz_doc, page_num - 1)
+
+                # Remove temporary annotations again
+                for annot in annots_added:
+                    page_fitz.delete_annot(annot)
+
                 rl_img = _RLImage(
                     io.BytesIO(jpeg_bytes),
                     width=preview_w_pt,

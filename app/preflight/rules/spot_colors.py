@@ -271,6 +271,7 @@ def _check_path_geometry(
     all_widths: list[float] = []
     any_filled = False
     any_unclosed = False
+    problem_rects: list[dict] = []
 
     for page_num in pages:
         page = doc[page_num - 1]  # pages are 1-indexed
@@ -295,6 +296,17 @@ def _check_path_geometry(
             if not close_path:
                 any_unclosed = True
 
+            # Collect bounding box if this path has any issue
+            has_issue = (fill is not None) or (not close_path) or (width > max_stroke_pt)
+            if has_issue:
+                rect = drawing.get("rect")
+                if rect is not None:
+                    problem_rects.append({
+                        "page": page_num,
+                        "x0": rect.x0, "y0": rect.y0,
+                        "x1": rect.x1, "y1": rect.y1,
+                    })
+
     if not all_widths:
         return {
             "stroke_width_pt": None,
@@ -302,6 +314,7 @@ def _check_path_geometry(
             "is_closed": None,
             "stroke_ok": None,
             "paths_found": False,
+            "problem_rects": [],
         }
 
     max_width = max(all_widths)
@@ -311,6 +324,7 @@ def _check_path_geometry(
         "is_closed": not any_unclosed,
         "stroke_ok": max_width <= max_stroke_pt,
         "paths_found": True,
+        "problem_rects": problem_rects,
     }
 
 
@@ -456,6 +470,7 @@ def check_cut_contour(
         is_overprint=is_overprint,
         status=status,
         messages=messages,
+        problem_rects=geom.get("problem_rects", []),
     )
 
 
