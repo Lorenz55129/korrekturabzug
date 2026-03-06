@@ -146,7 +146,10 @@ def _try_extract_cmyk(cs_array: pikepdf.Array) -> list[float] | None:
         if len(cs_array) < 4:
             return None
         alt_cs = cs_array[2]
-        if hasattr(alt_cs, "resolve"):
+        # Only dereference if it's a true indirect reference.
+        # hasattr(obj, "resolve") can raise ValueError for pikepdf.Name objects,
+        # so use is_indirect instead (safe on all pikepdf object types).
+        if getattr(alt_cs, "is_indirect", False):
             try:
                 alt_cs = alt_cs.resolve()
             except Exception:
@@ -157,7 +160,7 @@ def _try_extract_cmyk(cs_array: pikepdf.Array) -> list[float] | None:
         # The tint transform is a function; we can't easily evaluate it.
         # A common shortcut: if it's a /FunctionType 2 (exponential), the C1 array is the colour.
         tint_fn = cs_array[3]
-        if hasattr(tint_fn, "resolve"):
+        if getattr(tint_fn, "is_indirect", False):
             try:
                 tint_fn = tint_fn.resolve()
             except Exception:
