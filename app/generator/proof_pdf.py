@@ -660,18 +660,20 @@ def _build_summary_pdf(result: PreflightResult, request: ProofRequest) -> bytes:
     # Contour / Die rows
     if result.contour_check_enabled:
         cc_status = result.cut_contour.status if result.cut_contour else RuleStatus.FAIL
-        rows.append(["Konturschnitt", cc_status.value,
-                     "Gefunden" if (result.cut_contour and result.cut_contour.found) else "Nicht gefunden"])
+        if result.cut_contour and result.cut_contour.found:
+            cc_name = (
+                result.cut_contour.spot_color.name
+                if result.cut_contour.spot_color else "Gefunden"
+            )
+            cc_detail = f"{cc_name} \u2013 OK" if cc_status == RuleStatus.PASS else cc_name
+        else:
+            cc_detail = "Nicht gefunden"
+        rows.append(["Konturschnitt", cc_status.value, cc_detail])
         die_status = result.die.status if result.die else RuleStatus.FAIL
         rows.append(["Stanze / Die", die_status.value,
                      "Gefunden" if (result.die and result.die.found) else "Nicht gefunden"])
     else:
-        cc_hint = result.cutcontour_hint
-        cc_hint_text = (
-            f"Nicht gepr\u00fcft \u2013 \u201e{cc_hint}\u201c erkannt"
-            if cc_hint else "deaktiviert"
-        )
-        rows.append(["Konturschnitt / Stanze", "\u2013", cc_hint_text])
+        rows.append(["Konturschnitt / Stanze", "\u2013", "deaktiviert"])
 
     # Drill holes row
     if result.drill_holes_check_enabled:
