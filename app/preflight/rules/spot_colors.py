@@ -271,6 +271,7 @@ def _check_path_geometry(
     all_widths: list[float] = []
     any_filled = False
     any_unclosed = False
+    any_fill_only = False  # paths detected via fill colour, no stroke
     problem_rects: list[dict] = []
 
     for page_num in pages:
@@ -286,7 +287,9 @@ def _check_path_geometry(
             def _is_mag(c: "tuple | None") -> bool:
                 return bool(c and len(c) >= 3 and c[0] > 0.7 and c[1] < 0.15)
 
-            if not (_is_mag(color) or _is_mag(fill)):
+            stroke_is_mag = _is_mag(color)
+            fill_is_mag = _is_mag(fill)
+            if not (stroke_is_mag or fill_is_mag):
                 continue
 
             width = drawing.get("width") or 0.0
@@ -297,9 +300,17 @@ def _check_path_geometry(
                 any_filled = True
             if not close_path:
                 any_unclosed = True
+            # Path detected only via fill → no stroke line at all
+            if fill_is_mag and not stroke_is_mag:
+                any_fill_only = True
 
             # Collect bounding box if this path has any issue
-            has_issue = (fill is not None) or (not close_path) or (width > max_stroke_pt)
+            has_issue = (
+                (fill is not None)
+                or (not close_path)
+                or (width > max_stroke_pt)
+                or (width == 0.0)
+            )
             if has_issue:
                 rect = drawing.get("rect")
                 if rect is not None:
@@ -315,16 +326,20 @@ def _check_path_geometry(
             "is_unfilled": None,
             "is_closed": None,
             "stroke_ok": None,
+            "has_fill_only": False,
             "paths_found": False,
             "problem_rects": [],
         }
 
     max_width = max(all_widths)
+    # stroke_ok: must be > 0 (actual stroke) AND ≤ max allowed
+    stroke_ok = (max_width > 0) and (max_width <= max_stroke_pt)
     return {
         "stroke_width_pt": round(max_width, 3),
         "is_unfilled": not any_filled,
         "is_closed": not any_unclosed,
-        "stroke_ok": max_width <= max_stroke_pt,
+        "stroke_ok": stroke_ok,
+        "has_fill_only": any_fill_only,
         "paths_found": True,
         "problem_rects": problem_rects,
     }
@@ -427,7 +442,13 @@ def check_cut_contour(
     is_closed = geom["is_closed"]
 
     if geom["paths_found"]:
-        if geom["stroke_ok"] is False:
+        # Stroke width check: must be > 0 and ≤ max_stroke_pt
+        if stroke_width_pt == 0.0:
+            messages.append(
+                f"Kein Strich: Strichstärke 0 pt (muss {max_stroke_pt} pt sein)"
+            )
+            status = RuleStatus.WARN
+        elif geom["stroke_ok"] is False:
             messages.append(
                 f"Strichstärke {stroke_width_pt:.3f} pt > {max_stroke_pt} pt "
                 f"(erwartet ≤ {max_stroke_pt} pt)"
@@ -435,6 +456,14 @@ def check_cut_contour(
             status = RuleStatus.WARN
         else:
             messages.append(f"Strichstärke {stroke_width_pt:.3f} pt – OK")
+
+        # Fill-only: path has no stroke colour, only fill
+        if geom.get("has_fill_only"):
+            messages.append(
+                "Kontur ohne Strichfarbe: als Füllung angelegt "
+                "(muss als Strich ohne Füllung angelegt sein)"
+            )
+            status = RuleStatus.WARN
 
         if is_unfilled is False:
             messages.append("Cutcontour-Pfad hat Füllung (muss ungefüllt sein)")
