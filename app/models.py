@@ -216,6 +216,7 @@ class PreflightResult(BaseModel):
     """Complete preflight report for a customer PDF."""
     filename: str
     total_pages: int
+    scale: int = 1  # Maßstab-Faktor: 1 = 1:1, 10 = 1:10
     page_sizes: list[PageSizeResult] = Field(default_factory=list)
     images: list[ImageDPIResult] = Field(default_factory=list)
     images_total_count: int = 0
@@ -285,6 +286,7 @@ class ProofRequest(BaseModel):
     safe_margin_mm: float = Field(default=0.0, ge=0, le=30,
                                    description="Safe area margin in mm. 0 = disabled.")
     has_drill_holes: bool = False
+    scale: int = Field(default=1, description="Maßstab-Faktor: 1 = 1:1, 10 = 1:10")
 
 
 class ProofResponse(BaseModel):

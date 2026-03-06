@@ -26,7 +26,7 @@ def compute_effective_dpi(
     return (round(dpi_x, 1), round(dpi_y, 1))
 
 
-def check_image_dpi(doc: fitz.Document, cfg: dict[str, Any]) -> tuple[list[ImageDPIResult], int]:
+def check_image_dpi(doc: fitz.Document, cfg: dict[str, Any], scale: int = 1) -> tuple[list[ImageDPIResult], int]:
     """Return (all_images_list, total_instance_count).
 
     Each placement of an image on a page is one *instance*.  A single xref
@@ -34,7 +34,10 @@ def check_image_dpi(doc: fitz.Document, cfg: dict[str, Any]) -> tuple[list[Image
     equals ``len(all_images_list)`` so that Summary counters are always
     consistent (FAIL ≤ total).
     """
-    min_dpi = cfg.get("image_resolution", {}).get("min_dpi", 72)
+    # Bei Maßstab 1:10 muss die DPI im PDF 10× höher sein
+    # (z.B. 72 DPI Basis × 10 = 720 DPI Mindest im PDF → 72 DPI effektiv im Druck)
+    base_min_dpi = cfg.get("image_resolution", {}).get("min_dpi", 72)
+    min_dpi = base_min_dpi * scale
     all_images: list[ImageDPIResult] = []
 
     for page_num in range(len(doc)):
@@ -66,7 +69,14 @@ def check_image_dpi(doc: fitz.Document, cfg: dict[str, Any]) -> tuple[list[Image
 
                 if eff_dpi < min_dpi:
                     status = RuleStatus.FAIL
-                    msg = f"Image DPI {eff_dpi:.0f} < {min_dpi} (required)"
+                    if scale > 1:
+                        effective_at_print = round(eff_dpi / scale, 1)
+                        msg = (
+                            f"Auflösung {eff_dpi:.0f} DPI < {min_dpi} DPI (Mindest bei 1:{scale}-Maßstab) "
+                            f"→ effektiv {effective_at_print} DPI im Druck"
+                        )
+                    else:
+                        msg = f"Image DPI {eff_dpi:.0f} < {min_dpi} (required)"
                 else:
                     status = RuleStatus.PASS
                     msg = ""

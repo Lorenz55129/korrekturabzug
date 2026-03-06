@@ -453,6 +453,14 @@
                    min="0" max="30" step="0.5" value="0">
             <div class="hint">0 = deaktiviert</div>
           </div>
+          <div class="field">
+            <label for="scale">Maßstab</label>
+            <select id="scale" name="scale">
+              <option value="1">1:1 (Originalgröße)</option>
+              <option value="10">1:10 (Großformat, min. 720 DPI)</option>
+            </select>
+            <div class="hint">Bei 1:10 wird Mindest-DPI auf 720 gesetzt, Bleed/Sicherheitsabstand werden entsprechend skaliert</div>
+          </div>
         </div>
 
         <!-- Notizen -->

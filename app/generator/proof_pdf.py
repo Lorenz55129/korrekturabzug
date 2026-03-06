@@ -518,8 +518,18 @@ def _build_summary_pdf(result: PreflightResult, request: ProofRequest) -> bytes:
     ))
     if request.quantity:
         story.append(Paragraph(f"Menge: <b>{request.quantity} Stk.</b>", body))
+    # Maßstab
+    scale = getattr(result, "scale", 1)
+    if scale > 1:
+        story.append(Paragraph(f"Maßstab: <b>1:{scale}</b>", body))
     if request.bleed_mm > 0:
-        story.append(Paragraph(f"Soll-Bleed: <b>{request.bleed_mm:.1f} mm</b>", body))
+        effective_bleed = request.bleed_mm / scale
+        if scale > 1:
+            story.append(Paragraph(
+                f"Soll-Bleed: <b>{request.bleed_mm:.1f} mm</b> (im PDF: <b>{effective_bleed:.2f} mm</b>)", body
+            ))
+        else:
+            story.append(Paragraph(f"Soll-Bleed: <b>{request.bleed_mm:.1f} mm</b>", body))
     else:
         story.append(Paragraph("Bleed-Check: <b>deaktiviert</b>", body))
     # Product profile info

@@ -369,6 +369,7 @@ def create_proof(
     product_profile: str = Form(default=""),
     safe_margin_mm: float = Form(default=0.0),
     has_drill_holes: bool = Form(default=False),
+    scale: int = Form(default=1),
 ) -> ProofResponse:
     cfg = load_config()
     max_bytes = cfg.get("max_upload_bytes", 524_288_000)
@@ -381,6 +382,10 @@ def create_proof(
     # ── Validate safe_margin_mm ──────────────────────────
     if safe_margin_mm < 0 or safe_margin_mm > 30:
         raise HTTPException(status_code=422, detail="safe_margin_mm must be between 0 and 30.")
+
+    # ── Validate scale ───────────────────────────────────
+    if scale not in (1, 10):
+        raise HTTPException(status_code=422, detail="scale must be 1 (1:1) or 10 (1:10).")
 
     # ── Validate product_profile ─────────────────────────
     product_profile_clean: str | None = product_profile.strip() if product_profile else None
@@ -409,6 +414,7 @@ def create_proof(
         product_profile=product_profile_clean,
         safe_margin_mm=safe_margin_mm,
         has_drill_holes=has_drill_holes,
+        scale=scale,
     )
 
     # ── Preflight ───────────────────────────────────────
@@ -420,6 +426,7 @@ def create_proof(
             product_profile=product_profile_clean,
             safe_margin_mm=safe_margin_mm,
             has_drill_holes=has_drill_holes,
+            scale=scale,
         )
     except Exception as exc:
         logger.exception("Preflight failed for job %s", job_id)
