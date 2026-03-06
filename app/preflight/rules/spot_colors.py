@@ -213,6 +213,43 @@ def _is_true_overprint(val: Any) -> bool:
     return str(val).lower() == "true"
 
 
+def _is_drawing_closed(drawing: dict) -> bool:
+    """Return True if a PyMuPDF drawing path is closed.
+
+    PyMuPDF sets closePath=False even for paths that are geometrically closed
+    (e.g. circles built from beziers, polygons from lines, or re rectangles)
+    when the PDF has no explicit 'h' operator. We additionally check:
+      1. All items are "re" (rectangle) → inherently closed.
+      2. Geometric closure: end-point of last item ≈ start-point of first item.
+    """
+    if drawing.get("closePath", False):
+        return True
+    items = drawing.get("items", [])
+    if not items:
+        return False
+    # Rectangles are inherently closed
+    if all(item[0] == "re" for item in items):
+        return True
+    # Geometric closure helpers
+    def _pt_start(item):
+        if item[0] in ("l", "c"):
+            return item[1]
+        return None
+
+    def _pt_end(item):
+        if item[0] == "l":
+            return item[2]
+        if item[0] == "c":          # cubic bezier: (type, p1, ctrl1, ctrl2, p4)
+            return item[4]
+        return None
+
+    p0 = _pt_start(items[0])
+    p1 = _pt_end(items[-1])
+    if p0 is None or p1 is None:
+        return False
+    return abs(p0.x - p1.x) < 0.5 and abs(p0.y - p1.y) < 0.5
+
+
 def _check_path_geometry(
     doc: fitz.Document,
     pages: list[int],
@@ -244,15 +281,7 @@ def _check_path_geometry(
 
             width = drawing.get("width") or 0.0
             fill = drawing.get("fill")
-            close_path = drawing.get("closePath", False)
-
-            # PyMuPDF reports closePath=False for "re" (rectangle) operators even
-            # though they are inherently closed. Treat any path whose items consist
-            # only of "re" entries as closed.
-            if not close_path:
-                items = drawing.get("items", [])
-                if items and all(item[0] == "re" for item in items):
-                    close_path = True
+            close_path = _is_drawing_closed(drawing)
 
             all_widths.append(width)
             if fill is not None:
